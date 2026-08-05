@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: SmashHub
+  datasource:
+    url: "jdbc:mysql://localhost:3306/cms"
+    username: root
+    password: root
+    jpa:
+      hibernate:
+        ddl-auto: update
+      show-sql: true
