@@ -2,7 +2,7 @@ spring:
   application:
     name: SmashHub
   datasource:
-    url: "jdbc:mysql://localhost:3306/cms"
+    url: "jdbc:mysql://localhost:3306/badminton_shop"
     username: root
     password: root
     jpa:
