@@ -1,7 +1,9 @@
 package org.example.smashhub.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 import org.example.smashhub.shared.persistence.BaseEntity;
 
 import java.time.LocalDateTime;
@@ -10,7 +12,8 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "users")
-public class user extends BaseEntity {
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class User extends BaseEntity {
 
     @Column(nullable = false,unique = true, length = 100)
     String username;
