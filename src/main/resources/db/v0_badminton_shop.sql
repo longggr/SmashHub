@@ -23,7 +23,20 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ============================================================
--- 1. USERS
+-- 1. ROLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS role (
+                                    id BIGINT NOT NULL AUTO_INCREMENT,
+                                    create_date DATETIME(6) NULL,
+    update_date DATETIME(6) NULL,
+    code VARCHAR(50) NOT NULL,        -- 'ADMIN', 'CUSTOMER', 'STAFF'...
+    name VARCHAR(100) NOT NULL,       -- tên hiển thị, vd 'Quản trị viên'
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_role_code (code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 2. USERS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users (
                                      id BIGINT NOT NULL AUTO_INCREMENT,
@@ -32,15 +45,18 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(255) NOT NULL,
+    role_id BIGINT NOT NULL,
     status ENUM('ACTIVE','INACTIVE','LOCKED') NOT NULL DEFAULT 'ACTIVE',
     PRIMARY KEY (id),
     UNIQUE KEY uk_users_username (username),
-    UNIQUE KEY uk_users_email (email)
+    UNIQUE KEY uk_users_email (email),
+    KEY idx_users_role_id (role_id),
+    CONSTRAINT fk_users_role
+    FOREIGN KEY (role_id) REFERENCES role (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 2. ĐỊA GIỚI HÀNH CHÍNH (sync định kỳ từ GHN API)
+-- 3. ĐỊA GIỚI HÀNH CHÍNH (sync định kỳ từ GHN API)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS provinces (
                                          id INT NOT NULL,                 -- ProvinceID từ GHN
@@ -69,7 +85,7 @@ CREATE TABLE IF NOT EXISTS wards (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 3. ADDRESSES (sổ địa chỉ user)
+-- 4. ADDRESSES (sổ địa chỉ user)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS addresses (
                                          id BIGINT NOT NULL AUTO_INCREMENT,
@@ -100,7 +116,7 @@ CREATE TABLE IF NOT EXISTS addresses (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 4. BRAND
+-- 5. BRAND
 -- ============================================================
 CREATE TABLE IF NOT EXISTS brand (
                                      id BIGINT NOT NULL AUTO_INCREMENT,
@@ -114,7 +130,7 @@ CREATE TABLE IF NOT EXISTS brand (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 5. CATEGORY (có phân cấp cha/con)
+-- 6. CATEGORY (có phân cấp cha/con)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS category (
                                         id BIGINT NOT NULL AUTO_INCREMENT,
@@ -132,7 +148,7 @@ CREATE TABLE IF NOT EXISTS category (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 6. PRODUCTS
+-- 7. PRODUCTS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS products (
                                         id BIGINT NOT NULL AUTO_INCREMENT,
@@ -160,7 +176,7 @@ CREATE TABLE IF NOT EXISTS products (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 7. PRODUCT ATTRIBUTES (EAV - thuộc tính kỹ thuật riêng từng loại hàng)
+-- 8. PRODUCT ATTRIBUTES (EAV - thuộc tính kỹ thuật riêng từng loại hàng)
 --    vd: weight=4U, grip_size=G5, flex=Medium (vợt)
 --        shoe_tech=Power Cushion (giày)
 --        material=Polyester (quần áo)
@@ -179,7 +195,7 @@ CREATE TABLE IF NOT EXISTS product_attributes (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 8. PRODUCT COLORS
+-- 9. PRODUCT COLORS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS product_colors (
                                               id BIGINT NOT NULL AUTO_INCREMENT,
@@ -197,7 +213,7 @@ CREATE TABLE IF NOT EXISTS product_colors (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 9. PRODUCT IMAGES
+-- 10. PRODUCT IMAGES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS product_images (
                                               id BIGINT NOT NULL AUTO_INCREMENT,
@@ -218,7 +234,7 @@ CREATE TABLE IF NOT EXISTS product_images (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 10. PRODUCT VARIANTS
+-- 11. PRODUCT VARIANTS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS product_variants (
                                                 id BIGINT NOT NULL AUTO_INCREMENT,
@@ -240,7 +256,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 11. CART ITEMS
+-- 12. CART ITEMS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cart_items (
                                           id BIGINT NOT NULL AUTO_INCREMENT,
@@ -260,7 +276,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 12. ORDERS
+-- 13. ORDERS
 --     shipping_* = snapshot copy từ addresses tại thời điểm đặt hàng
 --     address_id = nullable, chỉ để trace ngược, KHÔNG dùng để đọc sống
 -- ============================================================
@@ -295,7 +311,7 @@ CREATE TABLE IF NOT EXISTS orders (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 13. ORDER ITEMS
+-- 14. ORDER ITEMS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS order_items (
                                            id BIGINT NOT NULL AUTO_INCREMENT,
@@ -321,7 +337,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 14. PAYMENT TRANSACTION
+-- 15. PAYMENT TRANSACTION
 -- ============================================================
 CREATE TABLE IF NOT EXISTS payment_transaction (
                                                    id BIGINT NOT NULL AUTO_INCREMENT,
