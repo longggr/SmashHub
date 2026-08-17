@@ -277,15 +277,14 @@ CREATE TABLE IF NOT EXISTS cart_items (
 
 -- ============================================================
 -- 13. ORDERS
---     shipping_* = snapshot copy từ addresses tại thời điểm đặt hàng
---     address_id = nullable, chỉ để trace ngược, KHÔNG dùng để đọc sống
+--     shipping_* = snapshot copy từ addresses tại thời điểm đặt hàng, tự chứa
+--     đủ thông tin giao hàng, không cần trace ngược về addresses.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS orders (
                                       id BIGINT NOT NULL AUTO_INCREMENT,
                                       create_date DATETIME(6) NULL,
     update_date DATETIME(6) NULL,
     user_id BIGINT NOT NULL,
-    address_id BIGINT NULL,
     order_status VARCHAR(20) NOT NULL DEFAULT 'PENDING_PAYMENT',
     shipping_method VARCHAR(15) NOT NULL DEFAULT 'STANDARD',
     shipping_recipient_name VARCHAR(255) NOT NULL,
@@ -302,12 +301,8 @@ CREATE TABLE IF NOT EXISTS orders (
     PRIMARY KEY (id),
     KEY idx_orders_user_id (user_id),
     KEY idx_orders_status (order_status),
-    KEY idx_orders_address_id (address_id),
     CONSTRAINT fk_orders_user
-    FOREIGN KEY (user_id) REFERENCES users (id),
-    CONSTRAINT fk_orders_address
-    FOREIGN KEY (address_id) REFERENCES addresses (id)
-    ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

@@ -22,7 +22,7 @@ public class Category extends BaseEntity {
     String slug;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @Column(name = "parent_id")
+    @JoinColumn(name = "parent_id")
     Category parent;
 
     @Column(name = "display_order")
