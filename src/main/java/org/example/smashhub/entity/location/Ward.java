@@ -1,4 +1,4 @@
-package org.example.smashhub.entity;
+package org.example.smashhub.entity.location;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

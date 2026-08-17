@@ -1,9 +1,5 @@
-package org.example.smashhub.entity;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+package org.example.smashhub.entity.location;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -15,14 +11,18 @@ import lombok.experimental.FieldDefaults;
 @ToString
 @EqualsAndHashCode
 @Entity
-@Table(name = "provinces")
+@Table(name = "districts")
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Province {
+public class District {
+
     @Id
-    @Column
+    @Column(nullable = false)
     Integer id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "province_id", nullable = false)
+    Province province;
 
     @Column(nullable = false)
     String name;
-
 }

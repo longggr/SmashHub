@@ -1,9 +1,8 @@
-package org.example.smashhub.entity;
+package org.example.smashhub.entity.location;
 
 import lombok.experimental.FieldDefaults;
+import org.example.smashhub.entity.User;
 import org.example.smashhub.shared.enums.AddressPriority;
-import org.example.smashhub.shared.persistence.AbstractEntity;
-import jakarta.persistence.*;
 import lombok.*;
 
 import jakarta.persistence.Column;
