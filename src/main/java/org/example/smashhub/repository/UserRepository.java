@@ -1,13 +1,16 @@
 package org.example.smashhub.repository;
 
-import org.apache.catalina.User;
+
+import org.example.smashhub.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-
+@Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByIdUsername(String username);
+    Optional<User> findByUsername(String username);
+
     Optional<User> findByEmail(String email);
     boolean existsByUsername(String username);
-    boolean existsByIdEmail(String email);
+    boolean existsByEmail(String email);
 }
