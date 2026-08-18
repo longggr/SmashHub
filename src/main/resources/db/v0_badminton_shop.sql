@@ -26,13 +26,9 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1. ROLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS role (
-                                    id BIGINT NOT NULL AUTO_INCREMENT,
-                                    create_date DATETIME(6) NULL,
-    update_date DATETIME(6) NULL,
-    code VARCHAR(50) NOT NULL,        -- 'ADMIN', 'CUSTOMER', 'STAFF'...
-    name VARCHAR(100) NOT NULL,       -- tên hiển thị, vd 'Quản trị viên'
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_role_code (code)
+                                    name VARCHAR(50) NOT NULL,        -- 'ADMIN', 'STAFF', 'CUSTOMER'
+    description VARCHAR(255) NULL,
+    PRIMARY KEY (name)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -45,14 +41,17 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role_id BIGINT NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    role_name VARCHAR(50) NOT NULL,
     status ENUM('ACTIVE','INACTIVE','LOCKED') NOT NULL DEFAULT 'ACTIVE',
+    email_verified_at DATETIME(6) NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_users_username (username),
     UNIQUE KEY uk_users_email (email),
-    KEY idx_users_role_id (role_id),
+    UNIQUE KEY uk_users_phone (phone),
+    KEY idx_users_role_name (role_name),
     CONSTRAINT fk_users_role
-    FOREIGN KEY (role_id) REFERENCES role (id)
+    FOREIGN KEY (role_name) REFERENCES role (name)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -335,8 +334,8 @@ CREATE TABLE IF NOT EXISTS order_items (
 -- 15. PAYMENT TRANSACTION
 -- ============================================================
 CREATE TABLE IF NOT EXISTS payment_transaction (
-                                                   id BIGINT NOT NULL AUTO_INCREMENT,
-                                                   create_date DATETIME(6) NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    create_date DATETIME(6) NULL,
     update_date DATETIME(6) NULL,
     order_id BIGINT NOT NULL,
     provider VARCHAR(255) NOT NULL,
