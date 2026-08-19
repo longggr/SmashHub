@@ -1,6 +1,6 @@
 package org.example.smashhub.shared.enums;
 
-public enum role {
+public enum Role {
     ADMIN,
     STAFF,
     CUSTOMER
