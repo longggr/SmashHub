@@ -22,12 +22,9 @@ public enum ErrorCode {
     PASSWORD_CONFIRM_NOT_MATCH(1013,"Password confirm not match",HttpStatus.BAD_REQUEST),
     PASSWORD_SAME_AS_OLD(1014, "New password must be different from old password", HttpStatus.BAD_REQUEST),
     INVALID_TOKEN(1015, "Invalid or expired token", HttpStatus.BAD_REQUEST),
-    PERMISSION_EXISTED(1002, "Permission existed", HttpStatus.BAD_REQUEST),
-    PERMISSION_NOT_EXISTED(1003, "Permission NOT existed", HttpStatus.BAD_REQUEST),
-    ROLE_EXISTED(1004, "Role existed", HttpStatus.BAD_REQUEST),
-    ROLE_NOT_EXISTED(1005, "Role NOT existed", HttpStatus.BAD_REQUEST),
-    PHONE_PREFIX_EXISTED(1006, "Phone prefix already exists", HttpStatus.BAD_REQUEST),
-    PHONE_PREFIX_NOT_FOUND(1006, "Phone prefix not found", HttpStatus.NOT_FOUND)
+    EMAIL_ALREADY_EXISTED(1016, "This email is already registered!", HttpStatus.BAD_REQUEST),
+    PHONE_ALREADY_EXISTS(1017, "Phone number already exists!", HttpStatus.BAD_REQUEST),
+    ROLE_NOT_FOUND(1018, "Role has not been seeded!", HttpStatus.NOT_FOUND)
     ;
 
     private int code = 1000;
