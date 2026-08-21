@@ -24,7 +24,8 @@ public enum ErrorCode {
     INVALID_TOKEN(1015, "Invalid or expired token", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_EXISTED(1016, "This email is already registered!", HttpStatus.BAD_REQUEST),
     PHONE_ALREADY_EXISTS(1017, "Phone number already exists!", HttpStatus.BAD_REQUEST),
-    ROLE_NOT_FOUND(1018, "Role has not been seeded!", HttpStatus.NOT_FOUND)
+    ROLE_NOT_FOUND(1018, "Role has not been seeded!", HttpStatus.NOT_FOUND),
+    USERNAME_EXISTED(1009, "Username existed", HttpStatus.BAD_REQUEST)
     ;
 
     private int code = 1000;

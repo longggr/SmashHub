@@ -6,9 +6,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.example.smashhub.dto.request.UserCreationRequest;
+import org.example.smashhub.dto.request.UserUpdateRequest;
+import org.example.smashhub.dto.response.PageResponse;
 import org.example.smashhub.dto.response.UserResponse;
 import org.example.smashhub.service.UserService;
 import org.example.smashhub.shared.response.ApiResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,11 +33,23 @@ public class UserController {
                 .message("User created successfully")
                 .build();
     }
+    @PutMapping("/{id}")
+    ApiResponse<UserResponse> updateUser(@PathVariable Long id,
+                                         @RequestBody UserUpdateRequest request){
+        return ApiResponse.<UserResponse>builder()
+                .code(1000)
+                .result(userService.updateUser(id, request))
+                .build();
+
+    }
 
     @GetMapping
-    ApiResponse<List<UserResponse>> getAll(){
+    ApiResponse<List<UserResponse>> getAll(
+            @RequestParam int pageNo,
+            @RequestParam int pageSize
+    ){
          return ApiResponse.<List<UserResponse>>builder()
-                .result(userService.getAll())
+                .result(userService.getAll(pageNo-1,pageSize))
                  .build();
     }
 
@@ -57,6 +74,20 @@ public class UserController {
     ApiResponse<UserResponse> getUserByEmail(@PathVariable String email){
         return ApiResponse.<UserResponse>builder()
                 .result(userService.findUserByEmail(email))
+                .code(1000)
+                .build();
+    }
+    @GetMapping("/search")
+    public ApiResponse<PageResponse<UserResponse>> searchUsers(
+            @RequestParam(value = "keyword") String keyword,
+            @RequestParam(value = "page", defaultValue = "0", required = false) int page,
+            @RequestParam(value = "size", defaultValue = "10", required = false) int size,
+            @RequestParam(value = "sortBy", defaultValue = "id", required = false) String sortBy,
+            @RequestParam(value = "sortDirection", defaultValue = "ASC", required = false) Sort.Direction sortDirection){
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ApiResponse.<PageResponse<UserResponse>>builder()
+                .result(userService.searchUser(keyword, pageable))
                 .code(1000)
                 .build();
     }
