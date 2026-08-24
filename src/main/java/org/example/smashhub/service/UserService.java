@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,11 +38,13 @@ public class UserService {
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
     RoleRepository roleRepository;
+    AuthService authService;
     private static final String DEFAULT_ROLE = "CUSTOMER";
     @Transactional
     public UserResponse createUser(UserCreationRequest request){
-        if(!passwordEncoder.matches(request.getPassword(), request.getConfirmPassword()))
-            throw new  AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        if (!Objects.equals(request.getPassword(), request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
         User user = userMapper.toUser(request);
         if(userRepository.existsByUsername(request.getUsername()))
             throw new AppException(ErrorCode.USER_EXISTED);
@@ -55,6 +58,14 @@ public class UserService {
         user.setRole(role);
         user.setStatus(Status.INACTIVE);
         user.setAuthProvider(AuthProvider.LOCAL);
+        User savedUser = userRepository.save(user);
+        // Gui OTP xac thuc ngay sau khi dang ky. Neu mail loi, khong rollback
+        // viec tao tai khoan - user van co the goi /auth/resend-otp sau.
+        try {
+            authService.sendVerificationOtp(savedUser);
+        } catch (AppException e) {
+            log.warn("Failed to send verification OTP for new user email={}", savedUser.getEmail(), e);
+        }
         return userMapper.toUserResponse(userRepository.save(user));
     }
 

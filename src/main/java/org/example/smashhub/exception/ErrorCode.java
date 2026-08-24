@@ -25,7 +25,11 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTED(1016, "This email is already registered!", HttpStatus.BAD_REQUEST),
     PHONE_ALREADY_EXISTS(1017, "Phone number already exists!", HttpStatus.BAD_REQUEST),
     ROLE_NOT_FOUND(1018, "Role has not been seeded!", HttpStatus.NOT_FOUND),
-    USERNAME_EXISTED(1009, "Username existed", HttpStatus.BAD_REQUEST)
+    USERNAME_EXISTED(1009, "Username existed", HttpStatus.BAD_REQUEST),
+    OTP_INVALID(1019, "Invalid or expired OTP code", HttpStatus.BAD_REQUEST),
+    EMAIL_ALREADY_VERIFIED(1020, "This account has already been verified", HttpStatus.BAD_REQUEST),
+    OTP_RESEND_TOO_SOON(1021, "Please wait a while before requesting a new OTP", HttpStatus.TOO_MANY_REQUESTS),
+    MAIL_SEND_FAILED(1022, "Failed to send verification email", HttpStatus.INTERNAL_SERVER_ERROR)
     ;
 
     private int code = 1000;
