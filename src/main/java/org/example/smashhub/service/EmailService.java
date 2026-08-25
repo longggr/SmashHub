@@ -34,12 +34,33 @@ public class EmailService {
     }
     private String buildOtpEmailContent(String otp) {
         return """
-                <div style="font-family: Arial, sans-serif; max-width:480px; margin:auto;">
-                    <h2 style="color:#1a73e8;">Xac thuc tai khoan SmashHub</h2>
-                    <p>Ma OTP cua ban la:</p>
-                    <p style="font-size:28px; font-weight:bold; letter-spacing:4px; color:#1a1a1a;">%s</p>
-                    <p>Ma co hieu luc trong 5 phut. Vui long khong chia se ma nay cho bat ky ai.</p>
-                </div>
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; background-color: #ffffff; padding: 32px; border-radius: 12px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+                          <div style="text-align: center; margin-bottom: 24px;">
+                              <h2 style="color: #1a73e8; font-size: 24px; margin: 0; font-weight: 700;">Xác thực tài khoản SmashHub</h2>
+                          </div>
+                
+                          <p style="color: #333333; font-size: 15px; line-height: 1.5; margin-bottom: 16px;">
+                              Xin chào,
+                          </p>
+                          <p style="color: #333333; font-size: 15px; line-height: 1.5; margin-bottom: 24px;">
+                              Bạn vừa yêu cầu mã xác thực cho tài khoản SmashHub của mình. Dưới đây là mã OTP của bạn:
+                          </p>
+                
+                          <div style="background-color: #f8f9fa; border: 1px dashed #1a73e8; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 24px;">
+                              <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1a73e8;">%s</span>
+                          </div>
+                
+                          <p style="color: #666666; font-size: 14px; line-height: 1.5; margin-bottom: 8px;">
+                              Mã này có hiệu lực trong vòng <strong>5 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai để đảm bảo an toàn tài khoản.
+                          </p>
+                
+                          <hr style="border: none; border-top: 1px solid #eeeeee; margin: 24px 0;">
+                
+                          <p style="color: #999999; font-size: 12px; text-align: center; margin: 0;">
+                              Trân trọng,<br>
+                              <strong>Đội ngũ SmashHub</strong>
+                          </p>
+                      </div>
                 """.formatted(otp);
     }
 }

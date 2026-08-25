@@ -3,13 +3,6 @@ server:
   servlet:
     context-path: /cms
 spring:
-  services:
-    redis:
-      image: redis:8.2.7-bookworm
-      container_name: redis
-      command: redis-server --requirepass "root"
-      ports:
-        - "6379:6379"
   application:
     name: SmashHub
   datasource:
@@ -35,6 +28,7 @@ spring:
     redis:
       host: localhost
       port: 6379
+      password: root
 
 app:
   otp:
