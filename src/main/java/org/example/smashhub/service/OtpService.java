@@ -32,7 +32,7 @@ public class OtpService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     public String generateOtp(String email){
-        String otp = String.valueOf(10000 + RANDOM.nextInt(900000));
+        String otp = String.valueOf(100000 + RANDOM.nextInt(900000));
         redisTemplate.opsForValue()
                 .set(OTP_PREFIX + email, otp, Duration.ofMinutes(otpExpirationMinutes));
         log.info("Generated OTP for email={}, expires in {} minute(s)", email, otpExpirationMinutes);
