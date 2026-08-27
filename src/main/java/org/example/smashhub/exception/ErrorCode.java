@@ -17,7 +17,7 @@ public enum ErrorCode {
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
     ACCOUNT_LOCKED(1009,"Your account has been locked.Please contact the Admin.", HttpStatus.FORBIDDEN),
     INCORRECT_PASSWORD(1010,"Password incorrect", HttpStatus.NOT_FOUND),
-    PASSWORD_ATTEMPT_EXCEEDED(1011,"incorrect password has exceeded the allowed number of attempts", HttpStatus.TOO_MANY_REQUESTS),
+    PASSWORD_ATTEMPT_EXCEEDED(1011,"Incorrect password entered too many times. Your account has been locked for %d seconds.", HttpStatus.TOO_MANY_REQUESTS),
     EMAIL_NOT_EXISTED(1012, "Please provide an valid email!", HttpStatus.NOT_FOUND),
     PASSWORD_CONFIRM_NOT_MATCH(1013,"Password confirm not match",HttpStatus.BAD_REQUEST),
     PASSWORD_SAME_AS_OLD(1014, "New password must be different from old password", HttpStatus.BAD_REQUEST),
@@ -25,11 +25,12 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTED(1016, "This email is already registered!", HttpStatus.BAD_REQUEST),
     PHONE_ALREADY_EXISTS(1017, "Phone number already exists!", HttpStatus.BAD_REQUEST),
     ROLE_NOT_FOUND(1018, "Role has not been seeded!", HttpStatus.NOT_FOUND),
-    USERNAME_EXISTED(1009, "Username existed", HttpStatus.BAD_REQUEST),
+    USERNAME_EXISTED(1024, "Username existed", HttpStatus.BAD_REQUEST),
     OTP_INVALID(1019, "Invalid or expired OTP code", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_VERIFIED(1020, "This account has already been verified", HttpStatus.BAD_REQUEST),
     OTP_RESEND_TOO_SOON(1021, "Please wait a while before requesting a new OTP", HttpStatus.TOO_MANY_REQUESTS),
-    MAIL_SEND_FAILED(1022, "Failed to send verification email", HttpStatus.INTERNAL_SERVER_ERROR)
+    MAIL_SEND_FAILED(1022, "Failed to send verification email", HttpStatus.INTERNAL_SERVER_ERROR),
+    ACCOUNT_TEMPORARILY_LOCKED(1023, "Account temporarily locked due to too many failed login attempts. Please try again in %d seconds.", HttpStatus.TOO_MANY_REQUESTS)
     ;
 
     private int code = 1000;

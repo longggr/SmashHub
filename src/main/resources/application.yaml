@@ -30,7 +30,14 @@ spring:
       port: 6379
       password: root
 
+jwt:
+  signerKey: "1TjXchw5FloESb63Kc+DFhTARvpWL4jUGCwfGWxuG5SIf/1y/LgJxHnMqaF6A/ij"
+
 app:
   otp:
     expiration-minutes: 5
     resend-cooldown-seconds: 60
+  login:
+    max-failed-attempts: 5
+    failure-window-minutes: 15
+    lockout-minutes: 15
