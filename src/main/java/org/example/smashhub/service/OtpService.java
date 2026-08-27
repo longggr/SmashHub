@@ -36,7 +36,7 @@ public class OtpService {
         String otp = String.valueOf(100000 + RANDOM.nextInt(900000));
         redisTemplate.opsForValue()
                 .set(OTP_PREFIX + email, otp, Duration.ofMinutes(otpExpirationMinutes));
-        log.info("Generated OTP for purpose={}, email={}, expires in {} minute(s)", email, otpExpirationMinutes);
+        log.info("Generated OTP for email={}, expires in {} minute(s)", email, otpExpirationMinutes);
         return otp;
     }
     public boolean isValid(String email, String otp) {
