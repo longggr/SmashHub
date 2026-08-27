@@ -16,8 +16,9 @@ public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {"/auth/login","/users",
             "/auth/introspect","/auth/logout","/auth/refresh","/auth/forgot-password",
             "/auth/reset-password/validate",
-            "/auth/reset-password"
+            "/auth/reset-password","/auth/verify-account",
     };
+    CustomJwtDecoder customJwtDecoder;
 
     @Bean
     public PasswordEncoder passwordEncoder(){

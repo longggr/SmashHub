@@ -9,7 +9,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class IntrospectRequest {
+public class RefreshTokenRequest {
     @NotBlank(message = "TOKEN_REQUIRED")
     String token;
 }

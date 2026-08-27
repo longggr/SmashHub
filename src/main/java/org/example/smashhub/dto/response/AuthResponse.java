@@ -1,6 +1,5 @@
-package org.example.smashhub.dto.request;
+package org.example.smashhub.dto.response;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -9,7 +8,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class IntrospectRequest {
-    @NotBlank(message = "TOKEN_REQUIRED")
+public class AuthResponse {
     String token;
+    boolean authenticated;
 }

@@ -17,7 +17,6 @@ import org.example.smashhub.exception.AppException;
 import org.example.smashhub.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
 import java.text.ParseException;
 import java.time.Instant;
@@ -31,12 +30,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JwtService {
+    TokenBlacklistService tokenBlacklistService;
     @NonFinal
     @Value("${jwt.signerKey}")
     protected String SIGNER_KEY;
-    private String generateToken(User user) {
+    public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
-
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(user.getUsername())
                 .issuer("cms.com")
@@ -61,6 +60,18 @@ public class JwtService {
         }
     }
 
+
+    public void invalidateToken(String token){
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            String jit = signedJWT.getJWTClaimsSet().getJWTID();
+            Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+            tokenBlacklistService.blacklist(jit,expiryTime);
+        } catch (ParseException e) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+    }
+
     private String buildScope(User user) {
         StringJoiner stringJoiner = new StringJoiner(" ");
 
@@ -82,7 +93,7 @@ public class JwtService {
                 .build();
     }
 
-    private SignedJWT verifyToken(String token) throws ParseException, JOSEException {
+    public SignedJWT verifyToken(String token) throws ParseException, JOSEException {
         SignedJWT signedJWT = SignedJWT.parse(token);
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
         Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
@@ -91,9 +102,8 @@ public class JwtService {
         if(!verified||!expiryTime.after(new Date())){
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
-//        // kiem tra token da bi huy hay chua
-//        if (invalidatedTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
-//            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        if (tokenBlacklistService.isBlacklisted(signedJWT.getJWTClaimsSet().getJWTID()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
         return signedJWT;
     }
 }

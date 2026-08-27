@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.smashhub.dto.request.IntrospectRequest;
 import org.example.smashhub.service.AuthService;
 import org.example.smashhub.service.JwtService;
+import org.springframework.beans.factory.annotation.Configurable;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.expression.ParseException;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -21,6 +23,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 @Slf4j
 @Component
+@Configuration
 public class CustomJwtDecoder implements JwtDecoder {
     @Value("${jwt.signerKey}")
     private String signerKey;
