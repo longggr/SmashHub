@@ -5,15 +5,18 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.example.smashhub.dto.request.ChangePasswordRequest;
 import org.example.smashhub.dto.request.UserCreationRequest;
 import org.example.smashhub.dto.request.UserUpdateRequest;
 import org.example.smashhub.dto.response.PageResponse;
 import org.example.smashhub.dto.response.UserResponse;
+import org.example.smashhub.service.AuthService;
 import org.example.smashhub.service.UserService;
 import org.example.smashhub.shared.response.ApiResponse;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +28,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserController {
     UserService userService;
+    AuthService authService;
     @PostMapping
     ApiResponse<UserResponse> createUser(@RequestBody @Valid UserCreationRequest request){
         return ApiResponse.<UserResponse>builder()
@@ -89,6 +93,16 @@ public class UserController {
         return ApiResponse.<PageResponse<UserResponse>>builder()
                 .result(userService.searchUser(keyword, pageable))
                 .code(1000)
+                .build();
+    }
+
+    @PostMapping("/change-password")
+    ApiResponse<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        authService.changePassword(email, request);
+        return ApiResponse.<Void>builder()
+                .code(1000)
+                .message("Password changed successfully")
                 .build();
     }
 }

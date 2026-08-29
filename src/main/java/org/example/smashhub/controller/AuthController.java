@@ -78,4 +78,22 @@ public class AuthController {
                 .message("OTP has been resent to your email")
                 .build();
     }
+
+    @PostMapping("/forgot-password")
+    ApiResponse<Void> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ApiResponse.<Void>builder()
+                .code(1000)
+                .message("OTP has been sent to your email")
+                .build();
+    }
+
+    @PostMapping("/reset-password")
+    ApiResponse<Void> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ApiResponse.<Void>builder()
+                .code(1000)
+                .message("Password reset successfully")
+                .build();
+    }
 }

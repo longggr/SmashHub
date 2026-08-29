@@ -8,9 +8,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.example.smashhub.dto.request.AuthRequest;
+import org.example.smashhub.dto.request.ChangePasswordRequest;
+import org.example.smashhub.dto.request.ForgotPasswordRequest;
 import org.example.smashhub.dto.request.IntrospectRequest;
 import org.example.smashhub.dto.request.LogoutRequest;
 import org.example.smashhub.dto.request.RefreshTokenRequest;
+import org.example.smashhub.dto.request.ResetPasswordRequest;
 import org.example.smashhub.dto.response.AuthResponse;
 import org.example.smashhub.dto.response.UserResponse;
 import org.example.smashhub.entity.User;
@@ -18,6 +21,7 @@ import org.example.smashhub.exception.AppException;
 import org.example.smashhub.exception.ErrorCode;
 import org.example.smashhub.mapper.UserMapper;
 import org.example.smashhub.repository.UserRepository;
+import org.example.smashhub.shared.enums.OtpPurpose;
 import org.example.smashhub.shared.enums.Status;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -105,16 +109,11 @@ public class AuthService {
 
     }
 
-    /**
-     * Sinh OTP moi va gui mail. Duoc goi ngay sau khi dang ky
-     * va tu ben trong resendOtp(). Khong throw neu OTP sinh thanh cong,
-     * nhung se propagate AppException(MAIL_SEND_FAILED) neu gui mail loi.
-     */
     @Transactional
     public void sendVerificationOtp(User user) {
-        String otp = otpService.generateOtp(user.getEmail());
+        String otp = otpService.generateOtp(OtpPurpose.REGISTER, user.getEmail());
         emailService.sendOtpEmail(user.getEmail(), otp);
-        otpService.markCooldown(user.getEmail());
+        otpService.markCooldown(OtpPurpose.REGISTER, user.getEmail());
     }
     @Transactional
     public void resendOtp(String email) {
@@ -124,7 +123,7 @@ public class AuthService {
         if (user.getStatus() == Status.ACTIVE)
             throw new AppException(ErrorCode.EMAIL_ALREADY_VERIFIED);
 
-        if (otpService.isInCooldown(email))
+        if (otpService.isInCooldown(OtpPurpose.REGISTER, email))
             throw new AppException(ErrorCode.OTP_RESEND_TOO_SOON);
 
         sendVerificationOtp(user);
@@ -138,12 +137,61 @@ public class AuthService {
         if (user.getStatus() == Status.ACTIVE)
             throw new AppException(ErrorCode.EMAIL_ALREADY_VERIFIED);
 
-        if (!otpService.isValid(email, otp))
+        if (!otpService.isValid(OtpPurpose.REGISTER, email, otp))
             throw new AppException(ErrorCode.OTP_INVALID);
         user.setStatus(Status.ACTIVE);
         user.setEmailVerifiedAt(LocalDateTime.now());
-        otpService.invalidate(email);
+        otpService.invalidate(OtpPurpose.REGISTER, email);
         return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_EXISTED));
+
+        if (otpService.isInCooldown(OtpPurpose.RESET_PASSWORD, email))
+            throw new AppException(ErrorCode.OTP_RESEND_TOO_SOON);
+
+        String otp = otpService.generateOtp(OtpPurpose.RESET_PASSWORD, email);
+        emailService.sendPasswordResetOtpEmail(email, otp);
+        otpService.markCooldown(OtpPurpose.RESET_PASSWORD, email);
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword()))
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+
+        String email = request.getEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_EXISTED));
+
+        if (!otpService.isValid(OtpPurpose.RESET_PASSWORD, email, request.getOtp()))
+            throw new AppException(ErrorCode.OTP_INVALID);
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        otpService.invalidate(OtpPurpose.RESET_PASSWORD, email);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword()))
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_EXISTED));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword()))
+            throw new AppException(ErrorCode.INCORRECT_PASSWORD);
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword()))
+            throw new AppException(ErrorCode.PASSWORD_SAME_AS_OLD);
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
 }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.example.smashhub.shared.enums.OtpPurpose;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -32,24 +33,36 @@ public class OtpService {
     private static final String COOLDOWN_PREFIX = "otp:cooldown:";
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    public String generateOtp(String email){
+    public String generateOtp(OtpPurpose purpose, String email) {
         String otp = String.valueOf(100000 + RANDOM.nextInt(900000));
         redisTemplate.opsForValue()
-                .set(OTP_PREFIX + email, otp, Duration.ofMinutes(otpExpirationMinutes));
-        log.info("Generated OTP for email={}, expires in {} minute(s)", email, otpExpirationMinutes);
+                .set(otpKey(purpose, email), otp, Duration.ofMinutes(otpExpirationMinutes));
+        log.info("Generated OTP for purpose={}, email={}, expires in {} minute(s)", purpose, email, otpExpirationMinutes);
         return otp;
     }
-    public boolean isValid(String email, String otp) {
-        String stored = redisTemplate.opsForValue().get(OTP_PREFIX + email);
+
+    public boolean isValid(OtpPurpose purpose, String email, String otp) {
+        String stored = redisTemplate.opsForValue().get(otpKey(purpose, email));
         return stored != null && stored.equals(otp);
     }
-    public void invalidate(String email) {
-        redisTemplate.delete(OTP_PREFIX + email);
+
+    public void invalidate(OtpPurpose purpose, String email) {
+        redisTemplate.delete(otpKey(purpose, email));
     }
-    public boolean isInCooldown(String email) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(COOLDOWN_PREFIX + email));
+
+    public boolean isInCooldown(OtpPurpose purpose, String email) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(cooldownKey(purpose, email)));
     }
-    public void markCooldown(String email) {
-        redisTemplate.opsForValue().set(COOLDOWN_PREFIX + email, "1", Duration.ofSeconds(resendCooldownSeconds));
+
+    public void markCooldown(OtpPurpose purpose, String email) {
+        redisTemplate.opsForValue().set(cooldownKey(purpose, email), "1", Duration.ofSeconds(resendCooldownSeconds));
+    }
+
+    private String otpKey(OtpPurpose purpose, String email) {
+        return OTP_PREFIX + purpose.name().toLowerCase() + ":" + email;
+    }
+
+    private String cooldownKey(OtpPurpose purpose, String email) {
+        return COOLDOWN_PREFIX + purpose.name().toLowerCase() + ":" + email;
     }
 }
