@@ -4,6 +4,17 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Secret & Env Files ###
+.env
+.env.local
+*.env
+application-local.yaml
+application-local.yml
+application-secret.yaml
+application-secret.yml
+*.pem
+*.key
+
 ### STS ###
 .apt_generated
 .classpath
@@ -17,7 +28,7 @@ target/
 .idea
 *.iws
 *.iml
-*.ipr
+*.ipr   
 
 ### NetBeans ###
 /nbproject/private/
