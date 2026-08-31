@@ -1,7 +1,7 @@
 package org.example.smashhub.exception;
 
 import lombok.extern.slf4j.Slf4j;
-import org.example.smashhub.shared.response.ApiResponse;
+import org.example.smashhub.common.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;

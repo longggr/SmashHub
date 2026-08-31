@@ -1,0 +1,135 @@
+package org.example.smashhub.user.service.impl;
+
+import jakarta.transaction.Transactional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.example.smashhub.auth.service.AuthService;
+import org.example.smashhub.common.dto.PageResponse;
+import org.example.smashhub.common.enums.AuthProvider;
+import org.example.smashhub.common.enums.Status;
+import org.example.smashhub.exception.AppException;
+import org.example.smashhub.exception.ErrorCode;
+import org.example.smashhub.user.dto.request.UserCreationRequest;
+import org.example.smashhub.user.dto.request.UserUpdateRequest;
+import org.example.smashhub.user.dto.response.UserResponse;
+import org.example.smashhub.user.entity.Role;
+import org.example.smashhub.user.entity.User;
+import org.example.smashhub.user.mapper.UserMapper;
+import org.example.smashhub.user.repository.RoleRepository;
+import org.example.smashhub.user.repository.UserRepository;
+import org.example.smashhub.user.service.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class UserServiceImpl implements UserService {
+
+    UserRepository userRepository;
+    UserMapper userMapper;
+    PasswordEncoder passwordEncoder;
+    RoleRepository roleRepository;
+    AuthService authService;
+
+    private static final String DEFAULT_ROLE = "CUSTOMER";
+
+    @Override
+    @Transactional
+    public UserResponse createUser(UserCreationRequest request) {
+        if (!Objects.equals(request.getPassword(), request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
+        User user = userMapper.toUser(request);
+        if (userRepository.existsByUsername(request.getUsername()))
+            throw new AppException(ErrorCode.USER_EXISTED);
+        if (userRepository.existsByEmail(request.getEmail()))
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTED);
+        if (userRepository.existsByPhone(request.getPhone()))
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        Role role = roleRepository.findById(DEFAULT_ROLE)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(role);
+        user.setStatus(Status.INACTIVE);
+        user.setAuthProvider(AuthProvider.LOCAL);
+        User savedUser = userRepository.save(user);
+
+        try {
+            authService.sendVerificationOtp(savedUser);
+        } catch (AppException e) {
+            log.warn("Failed to send verification OTP for new user email={}", savedUser.getEmail(), e);
+        }
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    @Override
+    public UserResponse updateUser(Long id, UserUpdateRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        if (!(request.getUsername() == null)) {
+            if (userRepository.existsByUsername(request.getUsername()))
+                throw new AppException(ErrorCode.USERNAME_EXISTED);
+            user.setUsername(request.getUsername().trim());
+        }
+        if (!(request.getUsername() == null)) {
+            user.setUsername(request.getUsername().trim());
+        }
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    @Override
+    public List<UserResponse> getAll(int pageNo, int pageSize) {
+        Pageable pageable = PageRequest.of(pageNo, pageSize);
+        return userMapper.toUserResponseList(userRepository.findAll(pageable).getContent());
+    }
+
+    @Override
+    public void delete(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        user.setStatus(Status.LOCKED);
+        userRepository.save(user);
+    }
+
+    @Override
+    public UserResponse findUserById(Long id) {
+        return userMapper.toUserResponse(userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED)));
+    }
+
+    @Override
+    public UserResponse findUserByEmail(String email) {
+        return userMapper.toUserResponse(userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_EXISTED)));
+    }
+
+    @Override
+    public PageResponse<UserResponse> searchUser(String keyword, Pageable pageable) {
+        Page<User> page = userRepository.searchUsers(keyword, pageable);
+        List<UserResponse> userResponses = page.getContent()
+                .stream()
+                .map(userMapper::toUserResponse)
+                .collect(Collectors.toList());
+
+        return PageResponse.<UserResponse>builder()
+                .pageNo(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isFirst(page.isFirst())
+                .isLast(page.isLast())
+                .content(userResponses)
+                .build();
+    }
+}

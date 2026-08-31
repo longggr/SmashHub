@@ -6,18 +6,18 @@ spring:
   application:
     name: SmashHub
   datasource:
-    url: "jdbc:mysql://localhost:3306/badminton_shop"
-    username: root
-    password: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/badminton_shop}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     jpa:
       hibernate:
         ddl-auto: update
       show-sql: true
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: thanhlongbc28@gmail.com
-    password: wrbfvamaaezllcgd
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:thanhlongbc28@gmail.com}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -26,12 +26,16 @@ spring:
             enable: true
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: root
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:root}
 
 jwt:
-  signerKey: "1TjXchw5FloESb63Kc+DFhTARvpWL4jUGCwfGWxuG5SIf/1y/LgJxHnMqaF6A/ij"
+  signerKey: ${JWT_SIGNER_KEY:default_secret_signer_key_must_be_overridden_in_env_file_123456}
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
 
 app:
   otp:
