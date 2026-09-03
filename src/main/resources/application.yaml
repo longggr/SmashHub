@@ -45,3 +45,9 @@ app:
     max-failed-attempts: 5
     failure-window-minutes: 15
     lockout-minutes: 15
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+  folder: ${CLOUDINARY_FOLDER}
