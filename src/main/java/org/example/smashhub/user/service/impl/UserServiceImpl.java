@@ -67,10 +67,10 @@ public class UserServiceImpl implements UserService {
 
         try {
             authService.sendVerificationOtp(savedUser);
-        } catch (AppException e) {
+        } catch (Exception e) {
             log.warn("Failed to send verification OTP for new user email={}", savedUser.getEmail(), e);
         }
-        return userMapper.toUserResponse(userRepository.save(user));
+        return userMapper.toUserResponse(savedUser);
     }
 
     @Override

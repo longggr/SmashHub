@@ -57,11 +57,6 @@
             <version>1.39.0</version>
         </dependency>
         <dependency>
-            <groupId>me.paulschwarz</groupId>
-            <artifactId>spring-dotenv</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
             <version>1.6.3</version>

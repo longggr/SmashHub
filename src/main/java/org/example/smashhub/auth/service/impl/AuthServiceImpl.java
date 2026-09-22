@@ -119,7 +119,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    //@Transactional
     public void sendVerificationOtp(User user) {
         String otp = otpService.generateOtp(OtpPurpose.REGISTER, user.getEmail());
         emailService.sendOtpEmail(user.getEmail(), otp);

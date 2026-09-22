@@ -1,14 +1,15 @@
 package org.example.smashhub.notification.service.impl;
 
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.example.smashhub.exception.AppException;
 import org.example.smashhub.exception.ErrorCode;
 import org.example.smashhub.notification.service.EmailService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -21,16 +22,21 @@ public class EmailServiceImpl implements EmailService {
 
     JavaMailSender mailSender;
 
+    @NonFinal
+    @Value("${spring.mail.username}")
+    String fromEmail;
+
     @Override
     public void sendOtpEmail(String toEmail, String otp) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(fromEmail, "SmashHub");
             helper.setTo(toEmail);
             helper.setSubject("[SmashHub] Ma xac thuc tai khoan cua ban");
             helper.setText(buildOtpEmailContent(otp), true);
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Send OTP email failed for {}", toEmail, e);
             throw new AppException(ErrorCode.MAIL_SEND_FAILED);
         }
@@ -41,11 +47,12 @@ public class EmailServiceImpl implements EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(fromEmail, "SmashHub");
             helper.setTo(toEmail);
             helper.setSubject("[SmashHub] Ma dat lai mat khau cua ban");
             helper.setText(buildPasswordResetEmailContent(otp), true);
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Send password reset email failed for {}", toEmail, e);
             throw new AppException(ErrorCode.MAIL_SEND_FAILED);
         }
