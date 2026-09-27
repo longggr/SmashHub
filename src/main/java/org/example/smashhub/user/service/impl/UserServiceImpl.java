@@ -4,7 +4,6 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
 import org.example.smashhub.auth.service.AuthService;
 import org.example.smashhub.common.dto.PageResponse;
 import org.example.smashhub.common.enums.AuthProvider;
@@ -31,7 +30,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserServiceImpl implements UserService {
@@ -65,11 +63,7 @@ public class UserServiceImpl implements UserService {
         user.setAuthProvider(AuthProvider.LOCAL);
         User savedUser = userRepository.save(user);
 
-        try {
-            authService.sendVerificationOtp(savedUser);
-        } catch (Exception e) {
-            log.warn("Failed to send verification OTP for new user email={}", savedUser.getEmail(), e);
-        }
+        authService.sendVerificationOtp(savedUser);
         return userMapper.toUserResponse(savedUser);
     }
 
