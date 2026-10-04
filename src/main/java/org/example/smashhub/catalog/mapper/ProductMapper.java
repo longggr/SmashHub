@@ -10,39 +10,15 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import java.util.List;
 
-/**
- * Cấu hình tổng quan cho Mapper:
- * - componentModel = "spring": Biến Mapper này thành một Spring Bean (@Component),
- *   cho phép bạn inject nó ở tầng Service bằng @Autowired hoặc constructor injection.
- * - nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE:
- *   Khi cập nhật dữ liệu, nếu một trường trong DTO gửi lên có giá trị null, MapStruct sẽ
- *   BỎ QUA và giữ nguyên giá trị cũ của Entity thay vì ghi đè bằng null (rất hữu ích cho API PATCH / partial update).
- * - uses = {BrandMapper.class, CategoryMapper.class}:
- *   Khai báo các Mapper phụ trợ. Khi ánh xạ các đối tượng lồng nhau như Brand -> BrandResponse
- *   hoặc Category -> CategoryResponse, MapStruct sẽ tái sử dụng logic từ 2 mapper này.
- */
 @Mapper(componentModel = "spring",
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
         uses = {BrandMapper.class, CategoryMapper.class})
 public interface ProductMapper {
 
-    /**
-     * Chuyển đổi dữ liệu tạo mới từ DTO (ProductRequest) sang Entity (Product).
-     * - target = "category", ignore = true: Bỏ qua trường category. Lý do: request thường chỉ
-     *   gửi categoryId (Long/UUID/String), tầng Service sẽ cần query Category từ DB lên rồi tự set vào Entity.
-     * - target = "brand", ignore = true: Tương tự như trên, Service sẽ tự truy vấn Brand theo brandId và gán vào sau.
-     */
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "brand", ignore = true)
     Product toProduct(ProductRequest request);
 
-    /**
-     * Cập nhật thông tin của một Product Entity đã tồn tại từ ProductRequest.
-     * - @MappingTarget: Báo cho MapStruct biết 'product' là đối tượng ĐÍCH sẽ được cập nhật trực tiếp,
-     *   không phải tạo mới đối tượng.
-     * - Vẫn bỏ qua category và brand để Service tự xử lý quan hệ foreign key khi cập nhật.
-     * - Nhờ nullValuePropertyMappingStrategy.IGNORE ở trên, trường nào trong request bị null sẽ không làm mất dữ liệu cũ của product.
-     */
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "brand", ignore = true)
     void updateProduct(@MappingTarget Product product, ProductRequest request);
