@@ -25,4 +25,12 @@ public class CatalogCacheEvictor {
             productBySlugCache.clear();
         }
     }
+    public void evictCategories() {
+        Cache cache = cacheManager.getCache("categories");
+        if (cache != null) {
+            cache.clear();
+        }
+    }
 }
+
+
