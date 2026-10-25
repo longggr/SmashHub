@@ -9,66 +9,84 @@ import org.example.smashhub.common.enums.ProductType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 public class ProductSpecification {
-    private ProductSpecification(){}
+    private ProductSpecification() {}
 
-    public static Specification<Product> hasKeyword(String keyword){
-        if(keyword == null || keyword.isBlank()) return null;
-        String pattern = "%" + keyword.trim().toLowerCase()+"%";
+    public static Specification<Product> hasKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) return null;
+        String pattern = "%" + keyword.trim().toLowerCase() + "%";
 
         return (root, query, cb) -> cb.or(
                 cb.like(cb.lower(root.get("name")), pattern),
-                cb.like(cb.lower(root.get("description")), pattern)
+                cb.like(cb.lower(root.get("description")), pattern),
+                cb.like(cb.lower(root.get("brand").get("name")), pattern),
+                cb.like(cb.lower(root.get("category").get("name")), pattern)
         );
     }
-    public static Specification<Product> hasCategory(Long categoryId){
-        if(categoryId == null) return null;
+
+    public static Specification<Product> hasCategory(Long categoryId) {
+        if (categoryId == null) return null;
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("category").get("id"), categoryId);
     }
-    public static Specification<Product> hasBrand(Long brandId){
-        if(brandId == null) return  null;
+
+    /**
+        Lọc sản phẩm theo tập hợp nhiều categoryId (cha + toàn bộ con/cháu)
+     */
+    public static Specification<Product> hasCategoryIn(Collection<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) return null;
+        return (root, query, cb) -> root.get("category").get("id").in(categoryIds);
+    }
+
+    public static Specification<Product> hasBrand(Long brandId) {
+        if (brandId == null) return null;
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("brand").get("id"), brandId);
     }
+
     public static Specification<Product> hasType(ProductType type) {
         if (type == null) return null;
         return (root, query, cb) -> cb.equal(root.get("type"), type);
     }
 
-    public static Specification<Product> hasStatus(ProductStatus status){
-        if(status == null) return null;
+    public static Specification<Product> hasStatus(ProductStatus status) {
+        if (status == null) return null;
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("productStatus"), status);
     }
+
     private static Expression<BigDecimal> effectivePrice(Root<Product> root, CriteriaBuilder cb) {
         return cb.coalesce(root.get("salePrice"), root.get("price"));
     }
-    public static Specification<Product> priceFrom(BigDecimal minPrice){
+
+    public static Specification<Product> priceFrom(BigDecimal minPrice) {
         if (minPrice == null) return null;
         return (root, query, criteriaBuilder) ->
-                criteriaBuilder.greaterThanOrEqualTo(effectivePrice(root,criteriaBuilder), minPrice);
-    }
-    public static Specification<Product> priceTo(BigDecimal maxPrice){
-        if (maxPrice == null) return null;
-        return (root, query, criteriaBuilder) ->
-                criteriaBuilder.lessThanOrEqualTo(effectivePrice(root,criteriaBuilder),maxPrice);
+                criteriaBuilder.greaterThanOrEqualTo(effectivePrice(root, criteriaBuilder), minPrice);
     }
 
-    public static Specification<Product> onSaleOnly(Boolean onSale){
+    public static Specification<Product> priceTo(BigDecimal maxPrice) {
+        if (maxPrice == null) return null;
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.lessThanOrEqualTo(effectivePrice(root, criteriaBuilder), maxPrice);
+    }
+
+    public static Specification<Product> onSaleOnly(Boolean onSale) {
         if (onSale == null || !onSale) return null;
         return (root, query, criteriaBuilder) -> {
-           Predicate notNull = criteriaBuilder.isNotNull(root.get("salePrice"));
+            Predicate notNull = criteriaBuilder.isNotNull(root.get("salePrice"));
             Predicate lowerThanPrice = criteriaBuilder.lessThan(root.get("salePrice"), root.get("price"));
             return criteriaBuilder.and(notNull, lowerThanPrice);
         };
     }
 
-    public static Specification<Product> hasAttribute(String attrName,String attrValue){
-        if(attrName ==null||attrName.isBlank()||attrValue==null||attrValue.isBlank())
+    public static Specification<Product> hasAttribute(String attrName, String attrValue) {
+        if (attrName == null || attrName.isBlank() || attrValue == null || attrValue.isBlank())
             return null;
         return (root, query, cb) -> {
             Subquery<Long> subquery = query.subquery(Long.class);
@@ -88,13 +106,13 @@ public class ProductSpecification {
         Specification<Product> combined = Specification.allOf();
         for (ProductAttributeFilter filter : attributes) {
             Specification<Product> one = hasAttribute(filter.getAttrName(), filter.getAttrValue());
-            if (one != null) combined = combined.and(one); // Nối đệ quy các Specification
+            if (one != null) combined = combined.and(one);
         }
         return combined;
     }
 
     public static Specification<Product> build(String keyword,
-                                               Long categoryId,
+                                               Collection<Long> categoryIds,
                                                Long brandId,
                                                ProductType type,
                                                ProductStatus status,
@@ -102,17 +120,19 @@ public class ProductSpecification {
                                                BigDecimal maxPrice,
                                                Boolean onSale,
                                                List<ProductAttributeFilter> attributes) {
-        // allOf() sẽ tự động bỏ qua (ignore) bất kỳ Specification nào trả về null
-        return Specification.allOf(
-                hasKeyword(keyword),
-                hasCategory(categoryId),
-                hasBrand(brandId),
-                hasType(type),
-                hasStatus(status),
-                priceFrom(minPrice),
-                priceTo(maxPrice),
-                onSaleOnly(onSale),
-                hasAttributes(attributes)
-        );
+        List<Specification<Product>> specs = Stream.<Specification<Product>>of(
+                        hasKeyword(keyword),
+                        hasCategoryIn(categoryIds),
+                        hasBrand(brandId),
+                        hasType(type),
+                        hasStatus(status),
+                        priceFrom(minPrice),
+                        priceTo(maxPrice),
+                        onSaleOnly(onSale),
+                        hasAttributes(attributes))
+                .filter(Objects::nonNull)
+                .toList();
+
+        return Specification.allOf(specs);
     }
 }

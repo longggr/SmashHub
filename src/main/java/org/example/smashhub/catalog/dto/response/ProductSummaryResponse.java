@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ProductSummaryResponse implements Serializable {
+    String name;
     Long id;
     String slug;
     ProductType type;
@@ -21,4 +22,5 @@ public class ProductSummaryResponse implements Serializable {
     ProductStatus productStatus;
     BigDecimal price;
     BigDecimal salePrice;
+    String thumbnailUrl;
 }

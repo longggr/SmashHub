@@ -1,10 +1,12 @@
 package org.example.smashhub.file.controller;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.smashhub.common.response.ApiResponse;
 import org.example.smashhub.file.dto.FileUploadResponse;
 import org.example.smashhub.file.service.FileService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -12,11 +14,13 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/files")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+// Trước đây mọi tài khoản đăng nhập (kể cả CUSTOMER) đều upload/xóa được ảnh trên Cloudinary của shop.
+@PreAuthorize("hasAnyRole('ADMIN','STAFF')")
 public class FileController {
     FileService fileService;
 
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    ApiResponse<FileUploadResponse> upload(@RequestParam("file") MultipartFile file) {
+    public ApiResponse<FileUploadResponse> upload(@RequestParam("file") MultipartFile file) {
         return ApiResponse.<FileUploadResponse>builder()
                 .result(fileService.upload(file))
                 .message("File uploaded successfully")
@@ -29,7 +33,7 @@ public class FileController {
      * Spring se hieu nham la 2 segment khac nhau.
      */
     @DeleteMapping
-    ApiResponse<Void> delete(@RequestParam("publicId") String publicId) {
+    public ApiResponse<Void> delete(@RequestParam("publicId") String publicId) {
         fileService.delete(publicId);
         return ApiResponse.<Void>builder()
                 .message("File deleted successfully")

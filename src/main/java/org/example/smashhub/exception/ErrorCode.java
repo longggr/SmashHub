@@ -15,28 +15,41 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
-    ACCOUNT_LOCKED(1009,"Your account has been locked.Please contact the Admin.", HttpStatus.FORBIDDEN),
-    INCORRECT_PASSWORD(1010,"Password incorrect", HttpStatus.NOT_FOUND),
-    PASSWORD_ATTEMPT_EXCEEDED(1011,"Incorrect password entered too many times. Your account has been locked for %d seconds.", HttpStatus.TOO_MANY_REQUESTS),
+    ACCOUNT_LOCKED(1009, "Your account has been locked.Please contact the Admin.", HttpStatus.FORBIDDEN),
+    INCORRECT_PASSWORD(1010, "Password incorrect", HttpStatus.NOT_FOUND),
+    PASSWORD_ATTEMPT_EXCEEDED(1011, "Incorrect password entered too many times. Your account has been locked for %d seconds.", HttpStatus.TOO_MANY_REQUESTS),
     EMAIL_NOT_EXISTED(1012, "Please provide an valid email!", HttpStatus.NOT_FOUND),
-    PASSWORD_CONFIRM_NOT_MATCH(1013,"Password confirm not match",HttpStatus.BAD_REQUEST),
+    PASSWORD_CONFIRM_NOT_MATCH(1013, "Password confirm not match", HttpStatus.BAD_REQUEST),
     PASSWORD_SAME_AS_OLD(1014, "New password must be different from old password", HttpStatus.BAD_REQUEST),
     INVALID_TOKEN(1015, "Invalid or expired token", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_EXISTED(1016, "This email is already registered!", HttpStatus.BAD_REQUEST),
     PHONE_ALREADY_EXISTS(1017, "Phone number already exists!", HttpStatus.BAD_REQUEST),
     ROLE_NOT_FOUND(1018, "Role has not been seeded!", HttpStatus.NOT_FOUND),
-    USERNAME_EXISTED(1024, "Username existed", HttpStatus.BAD_REQUEST),
     OTP_INVALID(1019, "Invalid or expired OTP code", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_VERIFIED(1020, "This account has already been verified", HttpStatus.BAD_REQUEST),
     OTP_RESEND_TOO_SOON(1021, "Please wait a while before requesting a new OTP", HttpStatus.TOO_MANY_REQUESTS),
     MAIL_SEND_FAILED(1022, "Failed to send verification email", HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_TEMPORARILY_LOCKED(1023, "Account temporarily locked due to too many failed login attempts. Please try again in %d seconds.", HttpStatus.TOO_MANY_REQUESTS),
+    USERNAME_EXISTED(1024, "Username existed", HttpStatus.BAD_REQUEST),
+
+    // ---- Các key validation đang được dùng trong DTO của user/auth (trước đây thiếu -> valueOf() ném lỗi 500) ----
+    EMAIL_INVALID(1025, "Email is invalid", HttpStatus.BAD_REQUEST),
+    PHONE_INVALID(1026, "Phone number is invalid", HttpStatus.BAD_REQUEST),
+    FIELD_REQUIRED(1027, "This field is required", HttpStatus.BAD_REQUEST),
+    TOKEN_REQUIRED(1028, "Token is required", HttpStatus.BAD_REQUEST),
+
+    // ---- Lỗi chung của tầng web ----
+    INVALID_REQUEST(1030, "Invalid request", HttpStatus.BAD_REQUEST),
+    RESOURCE_NOT_FOUND(1031, "Resource not found", HttpStatus.NOT_FOUND),
+    METHOD_NOT_ALLOWED(1032, "HTTP method not allowed", HttpStatus.METHOD_NOT_ALLOWED),
 
     // Catalog module
     BRAND_NOT_FOUND(2001, "Brand not found", HttpStatus.NOT_FOUND),
     BRAND_SLUG_EXISTED(2002, "Brand slug already exists", HttpStatus.BAD_REQUEST),
     BRAND_NAME_INVALID(2003, "Brand name must not be blank", HttpStatus.BAD_REQUEST),
     BRAND_SLUG_INVALID(2004, "Brand slug must not be blank", HttpStatus.BAD_REQUEST),
+    BRAND_NAME_EXISTED(2005, "Brand name already exists", HttpStatus.BAD_REQUEST),
+    BRAND_HAS_PRODUCTS(2006, "Cannot delete brand because it still has associated products", HttpStatus.BAD_REQUEST),
 
     CATEGORY_NOT_FOUND(2010, "Category not found", HttpStatus.NOT_FOUND),
     CATEGORY_SLUG_EXISTED(2011, "Category slug already exists", HttpStatus.BAD_REQUEST),
@@ -45,6 +58,7 @@ public enum ErrorCode {
     CATEGORY_HAS_CHILDREN(2014, "Cannot delete a category that still has sub-categories", HttpStatus.BAD_REQUEST),
     CATEGORY_NAME_INVALID(2015, "Category name must not be blank", HttpStatus.BAD_REQUEST),
     CATEGORY_SLUG_INVALID(2016, "Category slug must not be blank", HttpStatus.BAD_REQUEST),
+    CATEGORY_DISPLAY_ORDER_INVALID(2017, "Category display order must not be negative", HttpStatus.BAD_REQUEST),
 
     PRODUCT_NOT_FOUND(2020, "Product not found", HttpStatus.NOT_FOUND),
     PRODUCT_SLUG_EXISTED(2021, "Product slug already exists", HttpStatus.BAD_REQUEST),
@@ -59,11 +73,17 @@ public enum ErrorCode {
 
     PRODUCT_COLOR_NOT_FOUND(2030, "Product color not found", HttpStatus.NOT_FOUND),
     PRODUCT_COLOR_NAME_INVALID(2031, "Color name must not be blank", HttpStatus.BAD_REQUEST),
+    PRODUCT_COLOR_HEX_INVALID(2032, "Color hex code must look like #RGB or #RRGGBB", HttpStatus.BAD_REQUEST),
+    PRODUCT_COLOR_NAME_EXISTED(2033, "This product already has a color with the same name", HttpStatus.BAD_REQUEST),
+    PRODUCT_COLOR_HAS_VARIANTS(2034, "Cannot delete a color that still has variants. Deactivate or move its variants first", HttpStatus.CONFLICT),
 
     PRODUCT_VARIANT_NOT_FOUND(2040, "Product variant not found", HttpStatus.NOT_FOUND),
     PRODUCT_VARIANT_SKU_EXISTED(2041, "SKU already exists", HttpStatus.BAD_REQUEST),
     PRODUCT_VARIANT_SKU_INVALID(2042, "SKU must not be blank", HttpStatus.BAD_REQUEST),
     PRODUCT_VARIANT_STOCK_INVALID(2043, "Stock must not be negative", HttpStatus.BAD_REQUEST),
+    PRODUCT_VARIANT_INSUFFICIENT_STOCK(2044, "Insufficient stock", HttpStatus.CONFLICT),
+    PRODUCT_VARIANT_INACTIVE(2045, "This variant is not available for sale", HttpStatus.CONFLICT),
+    PRODUCT_VARIANT_QUANTITY_INVALID(2046, "Quantity must be greater than 0", HttpStatus.BAD_REQUEST),
 
     PRODUCT_IMAGE_NOT_FOUND(2050, "Product image not found", HttpStatus.NOT_FOUND),
     PRODUCT_IMAGE_URL_INVALID(2051, "Image url must not be blank", HttpStatus.BAD_REQUEST),
@@ -71,6 +91,8 @@ public enum ErrorCode {
     PRODUCT_ATTRIBUTE_NOT_FOUND(2060, "Product attribute not found", HttpStatus.NOT_FOUND),
     PRODUCT_ATTR_NAME_INVALID(2061, "Attribute name must not be blank", HttpStatus.BAD_REQUEST),
     PRODUCT_ATTR_VALUE_INVALID(2062, "Attribute value must not be blank", HttpStatus.BAD_REQUEST),
+
+    PRODUCT_SALE_PRICE_INVALID(2070, "Sale price must be greater than 0 and lower than the regular price", HttpStatus.BAD_REQUEST),
 
     // File module
     FILE_EMPTY(2100, "Uploaded file must not be empty", HttpStatus.BAD_REQUEST),

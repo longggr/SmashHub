@@ -20,7 +20,7 @@ import java.util.List;
 public class ProductSearchRequest {
     String keyword;
     Long categoryId;
-    Long BrandId;
+    Long brandId;
     ProductType type;
     ProductStatus status;
     BigDecimal minPrice;

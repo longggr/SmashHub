@@ -12,10 +12,10 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/badminton_shop}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
-    jpa:
-      hibernate:
-        ddl-auto: update
-      show-sql: true
+  jpa:
+    hibernate:
+      dl-auto: update
+    show-sql: true
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}

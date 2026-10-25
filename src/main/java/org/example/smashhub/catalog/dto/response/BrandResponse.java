@@ -19,6 +19,7 @@ public class BrandResponse implements Serializable {
     String name;
     String slug;
     String logoUrl;
+    Long productCount;
     LocalDateTime createDate;
     LocalDateTime updateDate;
 
