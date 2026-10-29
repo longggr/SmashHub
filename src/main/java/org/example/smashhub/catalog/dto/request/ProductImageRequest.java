@@ -15,7 +15,6 @@ import org.example.smashhub.common.enums.ImagePriority;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ProductImageRequest {
-    @NotBlank(message = "PRODUCT_IMAGE_URL_INVALID")
     String url;
     String providerPublicId;
     String title;

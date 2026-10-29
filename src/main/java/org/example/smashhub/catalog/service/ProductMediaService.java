@@ -4,15 +4,14 @@ import org.example.smashhub.catalog.dto.request.ProductColorRequest;
 import org.example.smashhub.catalog.dto.request.ProductImageRequest;
 import org.example.smashhub.catalog.dto.response.ProductColorResponse;
 import org.example.smashhub.catalog.dto.response.ProductImageResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface ProductMediaService {
     ProductColorResponse addColor(Long productId, ProductColorRequest request);
     ProductColorResponse updateColor(Long productId, Long colorId, ProductColorRequest request);
-    /** Chỉ xóa được khi màu không còn variant; ảnh của màu bị xóa theo (cả file trên Cloudinary, sau commit). */
     void deleteColor(Long productId, Long colorId);
-
     // ----- Image (colorId nằm trong request) -----
-    ProductImageResponse addImage(Long productId, ProductImageRequest request);
-    ProductImageResponse updateImage(Long productId, Long imageId, ProductImageRequest request);
+    ProductImageResponse addImage(Long productId, ProductImageRequest request, MultipartFile file);
+    ProductImageResponse updateImage(Long productId, Long imageId, ProductImageRequest request, MultipartFile file);
     void deleteImage(Long productId, Long imageId);
 }

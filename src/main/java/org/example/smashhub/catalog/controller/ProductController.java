@@ -19,11 +19,13 @@ import org.example.smashhub.exception.ErrorCode;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -36,11 +38,9 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ProductController {
 
-    // Quyền: ADMIN và STAFF quản lý catalog, riêng thao tác xóa chỉ ADMIN.
     private static final String CAN_MANAGE = "hasAnyRole('ADMIN','STAFF')";
     private static final String ADMIN_ONLY = "hasRole('ADMIN')";
 
-    // Chỉ cho sort theo các field này (client không được truyền tên field bất kỳ vào Sort).
     private static final Set<String> ALLOWED_SORT_FIELDS =
             Set.of("id", "name", "price", "salePrice", "createDate", "updateDate");
     private static final int MAX_PAGE_SIZE = 50;
@@ -50,14 +50,7 @@ public class ProductController {
     ProductMediaService mediaService;
     InventoryService inventoryService;
 
-    // ============================== PRODUCT ==============================
-
-    /**
-     * Tìm kiếm / lọc / phân trang (công khai).
-     * attr: lọc theo thuộc tính EAV, dạng attr=tênThuộcTính:giáTrị, truyền nhiều lần được.
-     *   vd /products?attr=weight:4U&attr=grip_size:G5
-     * page bắt đầu từ 0.
-     */
+    // PRODUCT
     @GetMapping
     public ApiResponse<PageResponse<ProductSummaryResponse>> search(
             @RequestParam(required = false) String keyword,
@@ -83,7 +76,6 @@ public class ProductController {
                 .maxPrice(maxPrice)
                 .onSale(onSale)
                 .attributes(parseAttributeFilters(attr))
-                // Khách thường chỉ thấy ACTIVE; ADMIN/STAFF mới được lọc theo status bất kỳ (xem DRAFT, DISCONTINUED...).
                 .status(isStaff() ? status : ProductStatus.ACTIVE)
                 .build();
 
@@ -140,8 +132,7 @@ public class ProductController {
                 .build();
     }
 
-    // ============================== ATTRIBUTE ==============================
-
+    // ATTRIBUTE
     @PostMapping("/{productId}/attributes")
     @PreAuthorize(CAN_MANAGE)
     public ApiResponse<ProductAttributeResponse> addAttribute(@PathVariable Long productId,
@@ -168,7 +159,7 @@ public class ProductController {
         return ApiResponse.<Void>builder().message("Attribute deleted").build();
     }
 
-    // ============================== COLOR ==============================
+    // COLOR
 
     @PostMapping("/{productId}/colors")
     @PreAuthorize(CAN_MANAGE)
@@ -196,25 +187,47 @@ public class ProductController {
         return ApiResponse.<Void>builder().message("Color deleted").build();
     }
 
-    // ============================== IMAGE ==============================
-    // Upload file lên Cloudinary qua POST /files/upload trước, rồi gửi url + publicId nhận được vào đây.
-
-    @PostMapping("/{productId}/images")
+    //IMAGE
+    @PostMapping(value = "/{productId}/images", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(CAN_MANAGE)
     public ApiResponse<ProductImageResponse> addImage(@PathVariable Long productId,
                                                       @RequestBody @Valid ProductImageRequest request) {
         return ApiResponse.<ProductImageResponse>builder()
-                .result(mediaService.addImage(productId, request))
+                .result(mediaService.addImage(productId, request, null))
                 .build();
     }
 
-    @PutMapping("/{productId}/images/{imageId}")
+    @PostMapping(value = "/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(CAN_MANAGE)
+    public ApiResponse<ProductImageResponse> addImageWithFile(
+            @PathVariable Long productId,
+            @Valid @ModelAttribute ProductImageRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file) {
+        return ApiResponse.<ProductImageResponse>builder()
+                .result(mediaService.addImage(productId, request, file))
+                .build();
+    }
+
+    @PutMapping(value = "/{productId}/images/{imageId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(CAN_MANAGE)
     public ApiResponse<ProductImageResponse> updateImage(@PathVariable Long productId,
                                                          @PathVariable Long imageId,
                                                          @RequestBody @Valid ProductImageRequest request) {
         return ApiResponse.<ProductImageResponse>builder()
-                .result(mediaService.updateImage(productId, imageId, request))
+                .result(mediaService.updateImage(productId, imageId, request, null))
+                .build();
+    }
+
+    /** Sửa ảnh kèm file mới (multipart/form-data). Không gửi file thì giữ ảnh cũ, chỉ sửa metadata. */
+    @PutMapping(value = "/{productId}/images/{imageId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(CAN_MANAGE)
+    public ApiResponse<ProductImageResponse> updateImageWithFile(
+            @PathVariable Long productId,
+            @PathVariable Long imageId,
+            @Valid @ModelAttribute ProductImageRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file) {
+        return ApiResponse.<ProductImageResponse>builder()
+                .result(mediaService.updateImage(productId, imageId, request, file))
                 .build();
     }
 
@@ -267,18 +280,13 @@ public class ProductController {
                 .anyMatch(a -> "ROLE_ADMIN".equals(a) || "ROLE_STAFF".equals(a));
     }
 
-    /**
-     * Sản phẩm DRAFT/DISCONTINUED/OUT_OF_STOCK không lộ ra khách: trả 404 như thể không tồn tại.
-     * Làm ở controller vì service có @Cacheable dùng chung cho cả admin lẫn khách.
-     */
+
     private ProductResponse hideIfNotPublic(ProductResponse product) {
         if (!isStaff() && product.getProductStatus() != ProductStatus.ACTIVE) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
         return product;
     }
-
-    /** "weight:4U" -> {attrName=weight, attrValue=4U}. Phần tử sai định dạng bị bỏ qua. */
     private List<ProductAttributeFilter> parseAttributeFilters(List<String> raw) {
         List<ProductAttributeFilter> filters = new ArrayList<>();
         if (raw == null) {

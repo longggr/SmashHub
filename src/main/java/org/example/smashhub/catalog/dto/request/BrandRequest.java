@@ -16,8 +16,10 @@ import lombok.experimental.FieldDefaults;
 public class BrandRequest {
     @NotBlank(message = "BRAND_NAME_INVALID")
     String name;
+
     @NotBlank(message = "BRAND_SLUG_INVALID")
     String slug;
 
-    String logoUrl;
+    // logoUrl đã bị loại bỏ: logo chỉ được gán qua multipart file upload (an toàn).
+    // Endpoint PATCH /{id}/logo vẫn giữ để hỗ trợ migrate dữ liệu cũ.
 }

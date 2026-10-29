@@ -14,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Objects;
@@ -104,6 +105,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<Object>> handleNoResource(NoResourceFoundException exception) {
         return build(ErrorCode.RESOURCE_NOT_FOUND, null);
+    }
+
+    /**
+     * File vượt giới hạn max-file-size / max-request-size trong application.yaml.
+     * Spring ném exception này trước khi request vào controller, nên FileService không được gọi.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMaxUploadSize(MaxUploadSizeExceededException exception) {
+        return build(ErrorCode.FILE_TOO_LARGE, null);
     }
 
     // ----------------------------------------------------------------------------------------

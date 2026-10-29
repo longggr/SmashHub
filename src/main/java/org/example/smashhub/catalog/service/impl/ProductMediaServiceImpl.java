@@ -21,17 +21,20 @@ import org.example.smashhub.catalog.service.ProductMediaService;
 import org.example.smashhub.common.enums.ImagePriority;
 import org.example.smashhub.exception.AppException;
 import org.example.smashhub.exception.ErrorCode;
+import org.example.smashhub.file.dto.FileUploadResponse;
+import org.example.smashhub.file.enums.FileFolder;
 import org.example.smashhub.file.service.FileService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
-@Service
 @Slf4j
+@Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ProductMediaServiceImpl implements ProductMediaService {
@@ -102,16 +105,19 @@ public class ProductMediaServiceImpl implements ProductMediaService {
             throw new AppException(ErrorCode.PRODUCT_COLOR_HAS_VARIANTS);
         }
 
+        // Thu thập publicId của tất cả ảnh thuộc màu này TRƯỚC KHI xóa.
         List<ProductImage> images = imageRepository.findByColorIdOrderByOrderIndexAsc(colorId);
         List<String> publicIds = images.stream()
                 .map(ProductImage::getProviderPublicId)
+                .filter(pid -> pid != null && !pid.isBlank())
                 .collect(Collectors.toList());
 
         imageRepository.deleteAll(images);
         colorRepository.delete(color);
 
         cacheEvictor.evictProduct(productId);
-        publicIds.forEach(this::deleteCloudFileAfterCommit);
+        // Xóa ảnh Cloudinary SAU KHI transaction commit thành công.
+        publicIds.forEach(fileService::deleteAfterCommit);
     }
 
     // =========================================================================
@@ -120,11 +126,28 @@ public class ProductMediaServiceImpl implements ProductMediaService {
 
     @Override
     @Transactional
-    public ProductImageResponse addImage(Long productId, ProductImageRequest request) {
+    public ProductImageResponse addImage(Long productId, ProductImageRequest request, MultipartFile file) {
+        // Phải có file hoặc url hợp lệ. Kiểm tra sớm để request thiếu dữ liệu không đụng DB/Cloudinary.
+        boolean hasFile = fileService.isPresent(file);
+        if (!hasFile && isBlank(request.getUrl())) {
+            throw new AppException(ErrorCode.PRODUCT_IMAGE_URL_INVALID);
+        }
+
         ProductColor color = requireColor(productId, request.getColorId());
+
+        String url = request.getUrl();
+        String publicId = request.getProviderPublicId();
+
+        if (hasFile) {
+            // Upload vào đúng thư mục sản phẩm; rollback transaction → ảnh bị dọn tự động.
+            FileUploadResponse uploaded = fileService.uploadInTransaction(file, FileFolder.PRODUCT);
+            url = uploaded.getUrl();
+            publicId = uploaded.getPublicId();
+        }
 
         ImagePriority priority = request.getIsMain();
         if (priority == null) {
+            // Mặc định: nếu màu chưa có ảnh MAIN thì ảnh mới là MAIN, ngược lại là SECONDARY.
             priority = imageRepository.hasImageWithPriority(color.getId(), ImagePriority.MAIN)
                     ? ImagePriority.SECONDARY
                     : ImagePriority.MAIN;
@@ -132,8 +155,9 @@ public class ProductMediaServiceImpl implements ProductMediaService {
 
         ProductImage image = ProductImage.builder()
                 .color(color)
-                .url(request.getUrl())
-                .providerPublicId(request.getProviderPublicId() != null ? request.getProviderPublicId() : "")
+                .url(url)
+                // Lưu publicId; nếu ảnh từ URL ngoài không có publicId thì để trống (không null để tránh NPE).
+                .providerPublicId(publicId != null ? publicId : "")
                 .title(request.getTitle())
                 .altText(request.getAltText())
                 .isMain(priority)
@@ -142,7 +166,7 @@ public class ProductMediaServiceImpl implements ProductMediaService {
 
         ProductImage saved = imageRepository.save(image);
 
-        // Mỗi màu chỉ có 1 ảnh MAIN.
+        // Mỗi màu chỉ có 1 ảnh MAIN — hạ cấp các ảnh còn lại.
         if (saved.getIsMain() == ImagePriority.MAIN) {
             imageRepository.demoteOthers(color.getId(), saved.getId(), ImagePriority.SECONDARY);
         }
@@ -153,23 +177,39 @@ public class ProductMediaServiceImpl implements ProductMediaService {
 
     @Override
     @Transactional
-    public ProductImageResponse updateImage(Long productId, Long imageId, ProductImageRequest request) {
+    public ProductImageResponse updateImage(Long productId, Long imageId,
+                                            ProductImageRequest request, MultipartFile file) {
         ProductImage image = requireImage(productId, imageId);
 
         Long oldColorId = image.getColor().getId();
         String oldPublicId = image.getProviderPublicId();
 
-        // Cho phép chuyển ảnh sang màu khác, nhưng màu mới cũng phải thuộc cùng product.
+        // Cho phép chuyển ảnh sang màu khác trong cùng product.
         if (!oldColorId.equals(request.getColorId())) {
             image.setColor(requireColor(productId, request.getColorId()));
         }
 
-        image.setUrl(request.getUrl());
-        if (request.getProviderPublicId() != null) {
-            image.setProviderPublicId(request.getProviderPublicId());
+        if (fileService.isPresent(file)) {
+            // Có file mới: upload → gán url và publicId mới; rollback → ảnh mới bị dọn.
+            FileUploadResponse uploaded = fileService.uploadInTransaction(file, FileFolder.PRODUCT);
+            image.setUrl(uploaded.getUrl());
+            image.setProviderPublicId(uploaded.getPublicId());
+        } else {
+            // Không có file: chỉ cập nhật url / publicId nếu client gửi tường minh.
+            if (!isBlank(request.getUrl())) {
+                image.setUrl(request.getUrl());
+            }
+            if (request.getProviderPublicId() != null) {
+                image.setProviderPublicId(request.getProviderPublicId());
+            }
         }
-        image.setTitle(request.getTitle());
-        image.setAltText(request.getAltText());
+
+        if (request.getTitle() != null) {
+            image.setTitle(request.getTitle());
+        }
+        if (request.getAltText() != null) {
+            image.setAltText(request.getAltText());
+        }
         if (request.getIsMain() != null) {
             image.setIsMain(request.getIsMain());
         }
@@ -183,15 +223,18 @@ public class ProductMediaServiceImpl implements ProductMediaService {
         if (saved.getIsMain() == ImagePriority.MAIN) {
             imageRepository.demoteOthers(newColorId, saved.getId(), ImagePriority.SECONDARY);
         }
-        // Đảm bảo cả màu mới lẫn màu cũ (nếu có chuyển) vẫn còn đúng 1 ảnh MAIN.
+        // Đảm bảo cả màu mới lẫn màu cũ (nếu chuyển màu) đều còn đúng 1 ảnh MAIN.
         ensureMainImage(newColorId);
         if (!oldColorId.equals(newColorId)) {
             ensureMainImage(oldColorId);
         }
 
-        // Thay file mới (publicId đổi) thì file cũ trên Cloudinary không còn dùng nữa.
-        if (request.getProviderPublicId() != null && !request.getProviderPublicId().equals(oldPublicId)) {
-            deleteCloudFileAfterCommit(oldPublicId);
+        // publicId thực sự đổi → ảnh cũ trên Cloudinary không còn dùng, xóa sau commit.
+        // Không xóa nếu publicId trống (ảnh ngoài không có publicId Cloudinary).
+        String newPublicId = saved.getProviderPublicId();
+        if (!Objects.equals(oldPublicId, newPublicId)
+                && oldPublicId != null && !oldPublicId.isBlank()) {
+            fileService.deleteAfterCommit(oldPublicId);
         }
 
         cacheEvictor.evictProduct(productId);
@@ -209,11 +252,15 @@ public class ProductMediaServiceImpl implements ProductMediaService {
         imageRepository.delete(image);
         imageRepository.flush();
 
-        // Xóa đúng ảnh MAIN thì đẩy ảnh kế tiếp lên làm MAIN.
+        // Xóa đúng ảnh MAIN → đẩy ảnh kế tiếp lên làm MAIN.
         ensureMainImage(colorId);
 
         cacheEvictor.evictProduct(productId);
-        deleteCloudFileAfterCommit(publicId);
+
+        // Xóa Cloudinary SAU COMMIT; bỏ qua nếu publicId trống (ảnh URL ngoài).
+        if (publicId != null && !publicId.isBlank()) {
+            fileService.deleteAfterCommit(publicId);
+        }
     }
 
     // ------------------------------ helpers ------------------------------
@@ -228,7 +275,7 @@ public class ProductMediaServiceImpl implements ProductMediaService {
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_IMAGE_NOT_FOUND));
     }
 
-    /** Màu nào có ảnh mà chưa có ảnh MAIN thì lấy ảnh đầu tiên (theo orderIndex) làm MAIN. */
+    /** Màu nào có ảnh mà chưa có ảnh MAIN → lấy ảnh đầu tiên (theo orderIndex) làm MAIN. */
     private void ensureMainImage(Long colorId) {
         if (imageRepository.hasImageWithPriority(colorId, ImagePriority.MAIN)) {
             return;
@@ -241,34 +288,7 @@ public class ProductMediaServiceImpl implements ProductMediaService {
         }
     }
 
-    /** Xóa file Cloudinary sau khi DB commit; lỗi Cloudinary chỉ log, không làm hỏng thao tác chính. */
-    private void deleteCloudFileAfterCommit(String publicId) {
-        if (publicId == null || publicId.isBlank()) {
-            return;
-        }
-        runAfterCommit(() -> {
-            try {
-                fileService.delete(publicId);
-            } catch (Exception e) {
-                log.warn("Could not delete Cloudinary file {}", publicId, e);
-            }
-        });
-    }
-
-    /**
-     * Chạy SAU khi transaction DB commit thành công (không có transaction thì chạy ngay).
-     * Nếu xóa file Cloudinary trước mà transaction rollback thì file mất oan.
-     */
-    private void runAfterCommit(Runnable action) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
-        } else {
-            action.run();
-        }
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

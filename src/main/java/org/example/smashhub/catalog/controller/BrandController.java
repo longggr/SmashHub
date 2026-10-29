@@ -13,8 +13,10 @@ import org.example.smashhub.common.response.ApiResponse;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;
@@ -32,7 +34,7 @@ public class BrandController {
 
     BrandService brandService;
 
-    // ---------------------------- công khai ----------------------------
+    // công khai
 
     @GetMapping
     public ApiResponse<List<BrandResponse>> getAll() {
@@ -74,7 +76,6 @@ public class BrandController {
                 .build();
     }
 
-    /** Các thương hiệu đang có sản phẩm ACTIVE trong danh mục (gồm cả danh mục con) - dùng cho bộ lọc. */
     @GetMapping("/by-category/{categoryId}")
     public ApiResponse<List<BrandResponse>> getByCategory(@PathVariable Long categoryId) {
         return ApiResponse.<List<BrandResponse>>builder()
@@ -89,27 +90,37 @@ public class BrandController {
                 .build();
     }
 
-    // ---------------------------- quản trị ----------------------------
+    // quản trị
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(CAN_MANAGE)
     public ApiResponse<BrandResponse> create(@RequestBody @Valid BrandRequest request) {
-        return ApiResponse.<BrandResponse>builder()
-                .result(brandService.create(request))
-                .message("Brand created successfully")
-                .build();
+        return created(brandService.create(request, null));
     }
 
-    @PutMapping("/{id}")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(CAN_MANAGE)
+    public ApiResponse<BrandResponse> createWithLogo(
+            @Valid @ModelAttribute BrandRequest request,
+            @RequestPart(value = "logo", required = false) MultipartFile logo) {
+        return created(brandService.create(request, logo));
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(CAN_MANAGE)
     public ApiResponse<BrandResponse> update(@PathVariable Long id, @RequestBody @Valid BrandRequest request) {
-        return ApiResponse.<BrandResponse>builder()
-                .result(brandService.update(id, request))
-                .message("Brand updated successfully")
-                .build();
+        return updated(brandService.update(id, request, null));
     }
 
-    /** Đổi logo (logo cũ trên Cloudinary được xóa). Upload file trước qua POST /files/upload để lấy url. */
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(CAN_MANAGE)
+    public ApiResponse<BrandResponse> updateWithLogo(
+            @PathVariable Long id,
+            @Valid @ModelAttribute BrandRequest request,
+            @RequestPart(value = "logo", required = false) MultipartFile logo) {
+        return updated(brandService.update(id, request, logo));
+    }
+
     @PatchMapping("/{id}/logo")
     @PreAuthorize(CAN_MANAGE)
     public ApiResponse<BrandResponse> updateLogo(@PathVariable Long id, @RequestParam("logoUrl") String logoUrl) {
@@ -125,6 +136,22 @@ public class BrandController {
         brandService.delete(id);
         return ApiResponse.<Void>builder()
                 .message("Brand deleted successfully")
+                .build();
+    }
+
+    // helpers
+
+    private ApiResponse<BrandResponse> created(BrandResponse brand) {
+        return ApiResponse.<BrandResponse>builder()
+                .result(brand)
+                .message("Brand created successfully")
+                .build();
+    }
+
+    private ApiResponse<BrandResponse> updated(BrandResponse brand) {
+        return ApiResponse.<BrandResponse>builder()
+                .result(brand)
+                .message("Brand updated successfully")
                 .build();
     }
 }

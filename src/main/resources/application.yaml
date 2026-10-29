@@ -14,8 +14,15 @@ spring:
     password: ${DB_PASSWORD:root}
   jpa:
     hibernate:
-      dl-auto: update
+     ddl-auto: update
     show-sql: true
+  servlet:
+    multipart:
+      enabled: true
+      # Giới hạn kích thước 1 file upload (phải khớp với MAX_FILE_SIZE trong FileServiceImpl = 5 MB).
+      max-file-size: 5MB
+      # Giới hạn toàn bộ request multipart (dư chút cho metadata form).
+      max-request-size: 10MB
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -54,4 +61,6 @@ cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
+  # Thư mục gốc trên Cloudinary. Các sub-folder (products/, brands/, reviews/)
+  # được ghép tự động bởi FileFolder.resolve(rootFolder).
   folder: ${CLOUDINARY_FOLDER:smashhub}

@@ -3,7 +3,6 @@ package org.example.smashhub.catalog.service.impl;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
 import org.example.smashhub.catalog.dto.request.BrandRequest;
 import org.example.smashhub.catalog.dto.response.BrandResponse;
 import org.example.smashhub.catalog.entity.Brand;
@@ -17,22 +16,25 @@ import org.example.smashhub.common.enums.ProductStatus;
 import org.example.smashhub.common.enums.ProductType;
 import org.example.smashhub.exception.AppException;
 import org.example.smashhub.exception.ErrorCode;
+import org.example.smashhub.file.dto.FileUploadResponse;
+import org.example.smashhub.file.enums.FileFolder;
 import org.example.smashhub.file.service.FileService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BrandServiceImpl implements BrandService {
@@ -49,19 +51,33 @@ public class BrandServiceImpl implements BrandService {
             @CacheEvict(cacheNames = "brand", allEntries = true),
             @CacheEvict(cacheNames = "brands", allEntries = true)
     })
-    public BrandResponse create(BrandRequest request) {
-        if (brandRepository.existsByNameIgnoreCase(request.getName().trim())) {
+    public BrandResponse create(BrandRequest request, MultipartFile logo) {
+        String name = request.getName().trim();
+        String slug = request.getSlug().trim().toLowerCase();
+
+        if (brandRepository.existsByNameIgnoreCase(name)) {
             throw new AppException(ErrorCode.BRAND_NAME_EXISTED);
         }
-        if (brandRepository.existsBySlug(request.getSlug().trim())) {
+        if (brandRepository.existsBySlug(slug)) {
             throw new AppException(ErrorCode.BRAND_SLUG_EXISTED);
         }
 
         Brand brand = brandMapper.toBrand(request);
-        brand.setName(request.getName().trim());
-        brand.setSlug(request.getSlug().trim().toLowerCase());
+        brand.setName(name);
+        brand.setSlug(slug);
+        // logoUrl từ request bị BrandMapper map; đặt lại null để tránh nhận URL tự do từ client
+        // (logo chỉ được gán qua file upload an toàn bên dưới).
+        brand.setLogoUrl(null);
+        brand.setLogoPublicId(null);
 
-        BrandResponse response = brandMapper.toBrandResponse(brandRepository.save(brand));
+        // Upload SAU khi đã qua kiểm tra nghiệp vụ: request sai không sinh file rác.
+        if (fileService.isPresent(logo)) {
+            FileUploadResponse uploaded = fileService.uploadInTransaction(logo, FileFolder.BRAND);
+            brand.setLogoUrl(uploaded.getUrl());
+            brand.setLogoPublicId(uploaded.getPublicId());
+        }
+
+        BrandResponse response = brandMapper.toBrandResponse(saveBrand(brand));
         response.setProductCount(0L);
         return response;
     }
@@ -74,30 +90,40 @@ public class BrandServiceImpl implements BrandService {
             @CacheEvict(cacheNames = "product", allEntries = true),
             @CacheEvict(cacheNames = "productBySlug", allEntries = true)
     })
-    public BrandResponse update(Long id, BrandRequest request) {
+    public BrandResponse update(Long id, BrandRequest request, MultipartFile logo) {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BRAND_NOT_FOUND));
 
-        if (!brand.getName().equalsIgnoreCase(request.getName().trim())
-                && brandRepository.existsByNameIgnoreCase(request.getName().trim())) {
+        String name = request.getName().trim();
+        String slug = request.getSlug().trim().toLowerCase();
+
+        if (!brand.getName().equalsIgnoreCase(name) && brandRepository.existsByNameIgnoreCase(name)) {
             throw new AppException(ErrorCode.BRAND_NAME_EXISTED);
         }
-
-        if (!brand.getSlug().equalsIgnoreCase(request.getSlug().trim())
-                && brandRepository.existsBySlug(request.getSlug().trim())) {
+        if (!brand.getSlug().equalsIgnoreCase(slug) && brandRepository.existsBySlug(slug)) {
             throw new AppException(ErrorCode.BRAND_SLUG_EXISTED);
         }
 
-        String oldLogoUrl = brand.getLogoUrl();
-        if (request.getLogoUrl() != null && oldLogoUrl != null && !oldLogoUrl.equals(request.getLogoUrl())) {
-            deleteCloudinaryLogoSafely(oldLogoUrl);
-        }
+        // Lưu lại publicId cũ trước khi mapper ghi đè (mapper IGNORE null, nên logoUrl trong
+        // request không làm thay đổi logo nếu không có file).
+        String oldPublicId = brand.getLogoPublicId();
 
         brandMapper.updateBrand(brand, request);
-        brand.setName(request.getName().trim());
-        brand.setSlug(request.getSlug().trim().toLowerCase());
+        brand.setName(name);
+        brand.setSlug(slug);
 
-        BrandResponse response = brandMapper.toBrandResponse(brandRepository.save(brand));
+        if (fileService.isPresent(logo)) {
+            // Có file mới: upload → gán url + publicId mới.
+            FileUploadResponse uploaded = fileService.uploadInTransaction(logo, FileFolder.BRAND);
+            brand.setLogoUrl(uploaded.getUrl());
+            brand.setLogoPublicId(uploaded.getPublicId());
+        }
+        // Nếu không có file mới: giữ nguyên logoUrl + logoPublicId cũ (mapper đã IGNORE null).
+
+        // Nếu publicId thực sự thay đổi → xóa ảnh cũ SAU KHI transaction commit.
+        deleteOldLogoAfterCommit(oldPublicId, brand.getLogoPublicId());
+
+        BrandResponse response = brandMapper.toBrandResponse(saveBrand(brand));
         response.setProductCount(productRepository.countByBrandIdAndProductStatus(id, ProductStatus.ACTIVE));
         return response;
     }
@@ -116,11 +142,13 @@ public class BrandServiceImpl implements BrandService {
             throw new AppException(ErrorCode.BRAND_HAS_PRODUCTS);
         }
 
-        if (brand.getLogoUrl() != null && !brand.getLogoUrl().isBlank()) {
-            deleteCloudinaryLogoSafely(brand.getLogoUrl());
-        }
-
+        String logoPublicId = brand.getLogoPublicId();
         brandRepository.delete(brand);
+
+        // Xóa ảnh trên Cloudinary SAU KHI DB commit; nếu không có publicId thì bỏ qua.
+        if (logoPublicId != null && !logoPublicId.isBlank()) {
+            fileService.deleteAfterCommit(logoPublicId);
+        }
     }
 
     @Override
@@ -170,6 +198,11 @@ public class BrandServiceImpl implements BrandService {
                 .build();
     }
 
+    /**
+     * Cập nhật logo bằng URL thuần (không qua file upload) — chỉ dùng trong các trường hợp
+     * migrate dữ liệu cũ hoặc quản trị viên biết chắc URL Cloudinary hợp lệ.
+     * Không xóa ảnh cũ trên Cloudinary vì không có publicId cũ đáng tin cậy.
+     */
     @Override
     @Transactional
     @Caching(evict = {
@@ -180,11 +213,10 @@ public class BrandServiceImpl implements BrandService {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BRAND_NOT_FOUND));
 
-        if (brand.getLogoUrl() != null && !brand.getLogoUrl().equals(newLogoUrl)) {
-            deleteCloudinaryLogoSafely(brand.getLogoUrl());
-        }
-
         brand.setLogoUrl(newLogoUrl);
+        // Không clear logoPublicId vì URL thuần không kèm publicId mới;
+        // để publicId cũ tránh mất thông tin quản lý.
+
         BrandResponse response = brandMapper.toBrandResponse(brandRepository.save(brand));
         response.setProductCount(productRepository.countByBrandIdAndProductStatus(id, ProductStatus.ACTIVE));
         return response;
@@ -207,6 +239,8 @@ public class BrandServiceImpl implements BrandService {
         return attachProductCounts(brands);
     }
 
+    // ------------------------------ helpers ------------------------------
+
     private List<BrandResponse> attachProductCounts(List<Brand> brands) {
         if (brands.isEmpty()) {
             return List.of();
@@ -228,19 +262,22 @@ public class BrandServiceImpl implements BrandService {
                 .toList();
     }
 
-    private void deleteCloudinaryLogoSafely(String logoUrl) {
+    /** Race giữa 2 request cùng tạo/sửa slug: unique constraint DB chặn lần ghi thứ hai. */
+    private Brand saveBrand(Brand brand) {
         try {
-            if (logoUrl.contains("/upload/")) {
-                String afterUpload = logoUrl.substring(logoUrl.indexOf("/upload/") + 8);
-                if (afterUpload.startsWith("v") && afterUpload.contains("/")) {
-                    afterUpload = afterUpload.substring(afterUpload.indexOf("/") + 1);
-                }
-                int dotIndex = afterUpload.lastIndexOf('.');
-                String publicId = (dotIndex != -1) ? afterUpload.substring(0, dotIndex) : afterUpload;
-                fileService.delete(publicId);
-            }
-        } catch (Exception e) {
-            log.warn("Could not delete old brand logo from Cloudinary: {}", logoUrl, e);
+            return brandRepository.saveAndFlush(brand);
+        } catch (DataIntegrityViolationException e) {
+            throw new AppException(ErrorCode.BRAND_SLUG_EXISTED);
+        }
+    }
+
+    /**
+     * Nếu publicId logo thực sự thay đổi → lên lịch xóa ảnh cũ SAU KHI commit.
+     * So sánh theo publicId (không theo URL) để tránh phụ thuộc vào format URL Cloudinary.
+     */
+    private void deleteOldLogoAfterCommit(String oldPublicId, String newPublicId) {
+        if (oldPublicId != null && !oldPublicId.isBlank() && !oldPublicId.equals(newPublicId)) {
+            fileService.deleteAfterCommit(oldPublicId);
         }
     }
 }

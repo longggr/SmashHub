@@ -5,12 +5,13 @@ import org.example.smashhub.catalog.dto.response.BrandResponse;
 import org.example.smashhub.common.dto.PageResponse;
 import org.example.smashhub.common.enums.ProductType;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface BrandService {
-    BrandResponse create(BrandRequest request);
-    BrandResponse update(Long id, BrandRequest request);
+    BrandResponse create(BrandRequest request, MultipartFile logo);
+    BrandResponse update(Long id, BrandRequest request, MultipartFile logo);
     void delete(Long id);
     BrandResponse getById(Long id);
     BrandResponse getBySlug(String slug);
