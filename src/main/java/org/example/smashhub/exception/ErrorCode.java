@@ -99,7 +99,14 @@ public enum ErrorCode {
     FILE_TYPE_NOT_SUPPORTED(2101, "Only image files (jpg, jpeg, png, webp) are supported", HttpStatus.BAD_REQUEST),
     FILE_TOO_LARGE(2102, "File size must not exceed 5MB", HttpStatus.BAD_REQUEST),
     FILE_UPLOAD_FAILED(2103, "Failed to upload file to Cloudinary", HttpStatus.INTERNAL_SERVER_ERROR),
-    FILE_DELETE_FAILED(2104, "Failed to delete file on Cloudinary", HttpStatus.INTERNAL_SERVER_ERROR)
+    FILE_DELETE_FAILED(2104, "Failed to delete file on Cloudinary", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // Cart module
+    CART_ITEM_NOT_FOUND(2200, "Cart item not found", HttpStatus.NOT_FOUND),
+    CART_EMPTY(2201, "Cart is empty", HttpStatus.BAD_REQUEST),
+    CART_MERGE_EMPTY(2202, "No items to merge", HttpStatus.BAD_REQUEST),
+    CART_QUANTITY_EXCEEDED(2203, "Quantity exceeds available stock or maximum allowed", HttpStatus.BAD_REQUEST),
+    CART_TOKEN_REQUIRED(2204, "Cart token is required for guest cart operations", HttpStatus.BAD_REQUEST),
     ;
 
     private int code = 1000;

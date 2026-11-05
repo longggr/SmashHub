@@ -36,6 +36,15 @@ public class SecurityConfig {
             "/categories/**",
     };
 
+    // Cart supports both guest (X-Cart-Token) and authenticated (JWT) users.
+    // Auth resolution is handled inside CartService, not at the security layer.
+    private static final String[] PUBLIC_CART_ENDPOINTS = {
+            "/cart",
+            "/cart/items",
+            "/cart/items/**",
+            "/cart/merge",
+    };
+
     @Autowired
     private CustomJwtDecoder customJwtDecoder;
 
@@ -49,6 +58,7 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(request ->
                 request.requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                        .requestMatchers(PUBLIC_CART_ENDPOINTS).permitAll()
                         .anyRequest().authenticated());
 
         httpSecurity.oauth2ResourceServer(oauth2 ->
